@@ -67,7 +67,7 @@ export default function SupporterPledgesPage() {
       if (!user) return
 
       // Try to find individual by user_id first (most reliable)
-      const { data: individualByUserId, error: errorByUserId } = await supabase
+      let { data: individualByUserId, error: errorByUserId } = await supabase
         .from("individuals")
         .select("*")
         .eq("user_id", user.id)

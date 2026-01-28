@@ -55,7 +55,7 @@ export default function SupporterProfilePage() {
 
     try {
       // First try to find by user_id
-      const { data, error } = await supabase.from("individuals").select("*").eq("user_id", user.id).maybeSingle()
+      let { data, error } = await supabase.from("individuals").select("*").eq("user_id", user.id).maybeSingle()
 
       if (error) {
         console.error("Error fetching individual by user_id:", error)
