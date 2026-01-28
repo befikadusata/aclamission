@@ -9,6 +9,16 @@ export async function createSupporterAccount(formData: {
   phoneNumber: string
 }) {
   try {
+    // Validate environment variables are available
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("Missing Supabase configuration");
+      return {
+        error: {
+          message: "Server configuration error. Please contact support."
+        }
+      };
+    }
+
     // Use the Admin API to create the user (since we're using service role key)
     const { data: { user }, error: authError } = await supabaseServer.auth.admin.createUser({
       email: formData.email,
@@ -26,6 +36,7 @@ export async function createSupporterAccount(formData: {
     });
 
     if (authError) {
+      console.error("Supabase auth error:", authError);
       return { error: authError }
     }
 
