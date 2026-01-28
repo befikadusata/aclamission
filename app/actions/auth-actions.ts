@@ -9,24 +9,27 @@ export async function createSupporterAccount(formData: {
   phoneNumber: string
 }) {
   try {
-    // Create the auth user first
-    const { data: authData, error: authError } = await supabaseServer.auth.signUp({
+    // Use the Admin API to create the user (since we're using service role key)
+    const { data: { user }, error: authError } = await supabaseServer.auth.admin.createUser({
       email: formData.email,
       password: formData.password,
-      options: {
-        data: {
-          full_name: formData.fullName,
-          phone_number: formData.phoneNumber,
-          is_supporter: true,
-        },
+      email_confirm: false, // User will need to confirm email
+      user_metadata: {
+        full_name: formData.fullName,
+        phone_number: formData.phoneNumber,
+        is_supporter: true,
       },
-    })
+      app_metadata: {
+        provider: 'email',
+        providers: ['email'],
+      }
+    });
 
     if (authError) {
       return { error: authError }
     }
 
-    if (!authData.user) {
+    if (!user) {
       return { error: { message: "Failed to create user account" } }
     }
 
@@ -52,7 +55,7 @@ export async function createSupporterAccount(formData: {
           name: formData.fullName,
           phone_number: formData.phoneNumber,
           email: formData.email,
-          user_id: authData.user.id, // Link to auth user
+          user_id: user.id, // Link to auth user
         })
         .select("id")
         .single()
@@ -65,13 +68,16 @@ export async function createSupporterAccount(formData: {
       }
     } else {
       // Update existing individual with user_id if not set
-      await supabaseServer.from("individuals").update({ user_id: authData.user.id }).eq("id", individualId)
+      const { error: updateError } = await supabaseServer.from("individuals").update({ user_id: user.id }).eq("id", individualId)
+      if (updateError) {
+        console.error("Error updating existing individual:", updateError);
+      }
     }
 
     // Create profile with supporter role using server client
     const { error: profileError } = await supabaseServer.from("profiles").upsert(
       {
-        id: authData.user.id,
+        id: user.id,
         full_name: formData.fullName,
         role: "supporter",
         phone_number: formData.phoneNumber,
@@ -89,14 +95,19 @@ export async function createSupporterAccount(formData: {
 
     // Store the individual_id in user metadata if we have one
     if (individualId) {
-      await supabaseServer.auth.updateUser({
-        data: {
+      const { error: metadataError } = await supabaseServer.auth.admin.updateUserById(user.id, {
+        user_metadata: {
           individual_id: individualId,
         },
       })
+
+      if (metadataError) {
+        console.error("Error updating user metadata:", metadataError);
+        // Don't fail the whole operation for metadata update failure
+      }
     }
 
-    return { error: null, user: authData.user, individualId }
+    return { error: null, user, individualId }
   } catch (err) {
     console.error("Unexpected signup error:", err)
     return {
