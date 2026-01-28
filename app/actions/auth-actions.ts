@@ -1,7 +1,6 @@
 "use server"
 
 import { supabaseServer } from "@/lib/supabase-server"
-import { supabase } from "@/lib/supabase-client"
 
 export async function createSupporterAccount(formData: {
   email: string
@@ -11,7 +10,7 @@ export async function createSupporterAccount(formData: {
 }) {
   try {
     // Create the auth user first
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabaseServer.auth.signUp({
       email: formData.email,
       password: formData.password,
       options: {
@@ -90,7 +89,7 @@ export async function createSupporterAccount(formData: {
 
     // Store the individual_id in user metadata if we have one
     if (individualId) {
-      await supabase.auth.updateUser({
+      await supabaseServer.auth.updateUser({
         data: {
           individual_id: individualId,
         },
